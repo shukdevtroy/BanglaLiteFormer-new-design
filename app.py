@@ -1,3 +1,6 @@
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -5,8 +8,9 @@ import numpy as np
 import pickle
 import gradio as gr
 
+
 # ============================================================
-# REGISTER CUSTOM LAYERS (TF KERAS SAFE FOR HF)
+# CUSTOM LAYERS (HF + TF SAFE)
 # ============================================================
 
 @tf.keras.utils.register_keras_serializable()
@@ -32,6 +36,9 @@ class TransformerBlock(layers.Layer):
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
+
+    def build(self, input_shape):
+        super().build(input_shape)
 
     def call(self, inputs, training=None):
         attn_output = self.att(inputs, inputs)
@@ -72,9 +79,12 @@ class TokenAndPositionEmbedding(layers.Layer):
             output_dim=embed_dim
         )
 
+    def build(self, input_shape):
+        super().build(input_shape)
+
     def call(self, x):
         seq_len = tf.shape(x)[-1]
-        positions = tf.range(0, seq_len)
+        positions = tf.range(start=0, limit=seq_len, delta=1)
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
@@ -114,36 +124,49 @@ model = tf.keras.models.load_model(
 
 
 # ============================================================
-# PREPROCESS
+# PREPROCESS FUNCTION
 # ============================================================
 
 def preprocess_text(text):
     seq = tokenizer.texts_to_sequences([text])
-    return keras.preprocessing.sequence.pad_sequences(seq, maxlen=MAX_LEN)
+    padded = keras.preprocessing.sequence.pad_sequences(
+        seq,
+        maxlen=MAX_LEN
+    )
+    return padded
 
 
 # ============================================================
-# PREDICTION
+# PREDICTION FUNCTION
 # ============================================================
 
 def predict_sentiment(text):
+    if not text or text.strip() == "":
+        return "Please enter Bangla text."
+
     processed = preprocess_text(text)
     prediction = model.predict(processed, verbose=0)[0]
 
+    # Binary output (sigmoid)
     if np.ndim(prediction) == 0 or len(np.atleast_1d(prediction)) == 1:
         score = float(prediction)
         label = "Positive 😊" if score >= 0.5 else "Negative 😠"
         return f"{label}\nConfidence: {score:.4f}"
 
+    # Softmax output
     class_id = int(np.argmax(prediction))
     confidence = float(np.max(prediction))
 
-    labels = {0: "Negative 😠", 1: "Positive 😊"}
+    labels = {
+        0: "Negative 😠",
+        1: "Positive 😊"
+    }
+
     return f"{labels[class_id]}\nConfidence: {confidence:.4f}"
 
 
 # ============================================================
-# GRADIO UI
+# GRADIO UI (GRADIO 4 SAFE)
 # ============================================================
 
 demo = gr.Interface(
@@ -155,8 +178,8 @@ demo = gr.Interface(
     ),
     outputs=gr.Textbox(label="Sentiment Result"),
     title="Bangla Transformer Sentiment Analyzer",
-    description="Enter a Bangla sentence to classify sentiment.",
-    allow_flagging="never"
+    description="Enter a Bangla sentence to classify sentiment."
 )
 
-demo.launch()
+if __name__ == "__main__":
+    demo.launch()
