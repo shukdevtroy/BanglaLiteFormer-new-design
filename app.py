@@ -180,6 +180,72 @@ demo = gr.Interface(
     title="Bangla Transformer Sentiment Analyzer",
     description="Enter a Bangla sentence to classify sentiment."
 )
+# ============================================================
+# ENHANCED GRADIO UI
+# ============================================================
+
+examples = [
+    ["এই পণ্যটি অসাধারণ! আমি খুব সন্তুষ্ট।"],
+    ["ডেলিভারি অনেক দেরিতে এসেছে, খুব খারাপ অভিজ্ঞতা।"],
+    ["কোয়ালিটি মোটামুটি ভালো, দাম একটু বেশি।"],
+    ["আমি একদমই খুশি নই, পণ্যটি প্রত্যাশা অনুযায়ী নয়।"],
+    ["চমৎকার সার্ভিস এবং দ্রুত ডেলিভারি।"]
+]
+
+with gr.Blocks(theme=gr.themes.Soft(), title="Bangla Sentiment Analyzer") as demo:
+
+    gr.Markdown(
+        """
+        # 🧠 Bangla Transformer Sentiment Analyzer
+        
+        বাংলা রিভিউ বা মন্তব্য লিখুন এবং তা Positive না Negative তা তাৎক্ষণিকভাবে জেনে নিন।
+        """
+    )
+
+    with gr.Row():
+        with gr.Column():
+            text_input = gr.Textbox(
+                lines=4,
+                placeholder="এখানে আপনার বাংলা রিভিউ লিখুন...",
+                label="📝 আপনার রিভিউ"
+            )
+
+            submit_btn = gr.Button("🔍 Analyze Sentiment", variant="primary")
+            clear_btn = gr.Button("🧹 Clear")
+
+        with gr.Column():
+            output_text = gr.Markdown(label="📊 Result")
+
+    gr.Markdown("### ✨ Example Inputs")
+    gr.Examples(
+        examples=examples,
+        inputs=text_input
+    )
+
+    # Button Actions
+    def formatted_prediction(text):
+        result = predict_sentiment(text)
+        return f"## 🎯 Prediction Result\n\n{result}"
+
+    submit_btn.click(
+        formatted_prediction,
+        inputs=text_input,
+        outputs=output_text
+    )
+
+    clear_btn.click(
+        lambda: "",
+        inputs=None,
+        outputs=text_input
+    )
+
+    gr.Markdown(
+        """
+        ---
+        ⚡ Powered by Custom Transformer Model  
+        Built with TensorFlow & Gradio  
+        """
+    )
 
 if __name__ == "__main__":
     demo.launch()
