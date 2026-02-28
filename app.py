@@ -6,9 +6,9 @@ import numpy as np
 # -----------------------------
 # Load Model and Tokenizer
 # -----------------------------
-model = tf.keras.models.load_model("model.keras")
+model = tf.keras.models.load_model("improved_bangla_sentiment.keras")
 
-with open("tokenizer.pkl", "rb") as f:
+with open("improved_tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
 
 # -----------------------------
