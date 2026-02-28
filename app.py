@@ -6,13 +6,11 @@ import pickle
 import gradio as gr
 
 # ============================================================
-# ✅ REGISTER CUSTOM LAYERS (MANDATORY FOR HF DEPLOYMENT)
+# ✅ REGISTER CUSTOM LAYERS (KERAS 3 SAFE)
 # ============================================================
 
-@tf.keras.utils.register_keras_serializable()
+@keras.saving.register_keras_serializable()
 class TransformerBlock(layers.Layer):
-    """Simplified Transformer block for sentiment analysis"""
-
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, **kwargs):
         super().__init__(**kwargs)
         self.embed_dim = embed_dim
@@ -20,11 +18,16 @@ class TransformerBlock(layers.Layer):
         self.ff_dim = ff_dim
         self.rate = rate
 
-        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        self.att = layers.MultiHeadAttention(
+            num_heads=num_heads,
+            key_dim=embed_dim
+        )
+
         self.ffn = keras.Sequential([
             layers.Dense(ff_dim, activation="relu"),
-            layers.Dense(embed_dim)
+            layers.Dense(embed_dim),
         ])
+
         self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
         self.dropout1 = layers.Dropout(rate)
@@ -34,8 +37,10 @@ class TransformerBlock(layers.Layer):
         attn_output = self.att(inputs, inputs)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(inputs + attn_output)
+
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
+
         return self.layernorm2(out1 + ffn_output)
 
     def get_config(self):
@@ -49,22 +54,27 @@ class TransformerBlock(layers.Layer):
         return config
 
 
-@tf.keras.utils.register_keras_serializable()
+@keras.saving.register_keras_serializable()
 class TokenAndPositionEmbedding(layers.Layer):
-    """Token and Position Embedding layer"""
-
     def __init__(self, maxlen, vocab_size, embed_dim, **kwargs):
         super().__init__(**kwargs)
         self.maxlen = maxlen
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
 
-        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
-        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+        self.token_emb = layers.Embedding(
+            input_dim=vocab_size,
+            output_dim=embed_dim
+        )
+
+        self.pos_emb = layers.Embedding(
+            input_dim=maxlen,
+            output_dim=embed_dim
+        )
 
     def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
+        seq_len = tf.shape(x)[-1]
+        positions = tf.range(start=0, limit=seq_len, delta=1)
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
@@ -80,31 +90,39 @@ class TokenAndPositionEmbedding(layers.Layer):
 
 
 # ============================================================
-# ✅ LOAD TOKENIZER / VECTORIZER
+# ✅ LOAD TOKENIZER
 # ============================================================
 
 with open("improved_tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
 
-
-# IMPORTANT → must match training time value
-MAX_LEN = 80   # ⚠️ change if you used different maxlen
+MAX_LEN = 80
 
 
 # ============================================================
-# ✅ LOAD TRAINED MODEL
+# ✅ LOAD MODEL (CRITICAL FIX HERE)
 # ============================================================
 
-model = tf.keras.models.load_model("improved_bangla_sentiment.keras", compile=False)
+model = tf.keras.models.load_model(
+    "improved_bangla_sentiment.keras",
+    custom_objects={
+        "TransformerBlock": TransformerBlock,
+        "TokenAndPositionEmbedding": TokenAndPositionEmbedding,
+    },
+    compile=False,
+)
 
 
 # ============================================================
-# ✅ PREPROCESS FUNCTION (MUST MATCH TRAINING)
+# ✅ PREPROCESS FUNCTION
 # ============================================================
 
 def preprocess_text(text):
     seq = tokenizer.texts_to_sequences([text])
-    padded = keras.preprocessing.sequence.pad_sequences(seq, maxlen=MAX_LEN)
+    padded = keras.preprocessing.sequence.pad_sequences(
+        seq,
+        maxlen=MAX_LEN
+    )
     return padded
 
 
@@ -114,25 +132,24 @@ def preprocess_text(text):
 
 def predict_sentiment(text):
     processed = preprocess_text(text)
-    prediction = model.predict(processed)[0]
+    prediction = model.predict(processed, verbose=0)[0]
 
-    # If sigmoid binary output
-    if prediction.shape == () or len(prediction) == 1:
+    # Binary sigmoid case
+    if np.ndim(prediction) == 0 or len(np.atleast_1d(prediction)) == 1:
         score = float(prediction)
         label = "Positive 😊" if score >= 0.5 else "Negative 😠"
         return f"{label}\nConfidence: {score:.4f}"
 
-    # If softmax output
-    else:
-        class_id = np.argmax(prediction)
-        confidence = float(np.max(prediction))
+    # Softmax case
+    class_id = int(np.argmax(prediction))
+    confidence = float(np.max(prediction))
 
-        label_map = {
-            0: "Negative 😠",
-            1: "Positive 😊"
-        }
+    label_map = {
+        0: "Negative 😠",
+        1: "Positive 😊",
+    }
 
-        return f"{label_map[class_id]}\nConfidence: {confidence:.4f}"
+    return f"{label_map[class_id]}\nConfidence: {confidence:.4f}"
 
 
 # ============================================================
@@ -144,13 +161,12 @@ demo = gr.Interface(
     inputs=gr.Textbox(
         lines=3,
         placeholder="এখানে বাংলা বাক্য লিখুন...",
-        label="Bangla Input Text"
+        label="Bangla Input Text",
     ),
     outputs=gr.Textbox(label="Sentiment Result"),
     title="Bangla Transformer Sentiment Analyzer",
-    description="Enter a Bangla sentence to classify sentiment (Positive / Negative).",
-    allow_flagging="never"
+    description="Enter a Bangla sentence to classify sentiment.",
+    allow_flagging="never",
 )
 
-# For Hugging Face Spaces
 demo.launch()
