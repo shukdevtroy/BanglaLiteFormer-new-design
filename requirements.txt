@@ -1,0 +1,4 @@
+gradio
+tensorflow
+scikit-learn
+numpy
