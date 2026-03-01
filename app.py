@@ -197,9 +197,9 @@ html, body {
   min-width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
-  background: var(--bg) !important;
+  background: #897d7d !important;
   font-family: 'Syne', sans-serif !important;
-  color: var(--text) !important;
+  color: white !important;
 }
 
 /* ── ANIMATED GRID ────────────────────────────────── */
@@ -363,7 +363,7 @@ textarea {
   background: rgba(255,255,255,0.035) !important;
   border: 1.5px solid rgba(255,255,255,0.09) !important;
   border-radius: 14px !important;
-  color: #f1f3ff !important;
+  color: black !important;
   font-family: 'Hind Siliguri', sans-serif !important;
   font-size: 17px !important;
   font-weight: 500 !important;
