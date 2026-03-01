@@ -308,7 +308,7 @@ body::before {
   padding: 5px 14px;
   border-radius: 100px;
   border: 1px solid var(--border);
-  color: var(--muted);
+  color: white !important;
   background: var(--surface);
 }
 
@@ -345,7 +345,7 @@ body::before {
   font-size: 11px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: var(--accent);
+  color: white !important;
   margin-bottom: 14px;
 }
 .sec-label::before {
@@ -437,10 +437,12 @@ button[variant="secondary"]:hover {
 .empty-text {
   font-family: 'Hind Siliguri', sans-serif;
   font-size: 16px; color: var(--muted); font-weight: 500;
+  color: #cd00ff;
 }
 .empty-sub {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; color: rgba(136,146,176,0.38); letter-spacing: 0.4px;
+  color: #cd00ff;
 }
 
 .result-card {
@@ -508,7 +510,7 @@ button[variant="secondary"]:hover {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: rgba(136,146,176,0.45); margin-bottom: 12px;
+  color: white; margin-bottom: 12px;
 }
 table {
   width: 100% !important;
