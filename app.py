@@ -437,12 +437,12 @@ button[variant="secondary"]:hover {
 .empty-text {
   font-family: 'Hind Siliguri', sans-serif;
   font-size: 16px; color: var(--muted); font-weight: 500;
-  color: #cd00ff;
+  color: #cd00ff !important;
 }
 .empty-sub {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; color: rgba(136,146,176,0.38); letter-spacing: 0.4px;
-  color: #cd00ff;
+  color: #cd00ff !important;
 }
 
 .result-card {
