@@ -510,7 +510,7 @@ button[variant="secondary"]:hover {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: white; margin-bottom: 12px;
+  color: white !important; margin-bottom: 12px;
 }
 table {
   width: 100% !important;
