@@ -547,23 +547,23 @@ HERO = """
 
   <!-- Subtitle -->
   <p style="font-family:'Hind Siliguri',sans-serif;font-size:17px;
-    color:rgba(148,163,184,0.7);margin-bottom:26px;position:relative;z-index:1;">
+    color:white !important;margin-bottom:26px;position:relative;z-index:1;">
     বাংলা রিভিউ বা মন্তব্য লিখুন — তাৎক্ষণিক বিশ্লেষণ পান
   </p>
 
   <!-- Badges -->
   <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;position:relative;z-index:1;">
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color:rgba(148,163,184,0.65);
+      border:1px solid rgba(255,255,255,0.09);color: #00ffdfa6;
       background:rgba(255,255,255,0.03);">⚡ TensorFlow</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color:rgba(148,163,184,0.65);
+      border:1px solid rgba(255,255,255,0.09);color: #C4B5FD;
       background:rgba(255,255,255,0.03);">🔤 Transformer</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color:rgba(148,163,184,0.65);
+      border:1px solid rgba(255,255,255,0.09);color: #00ffdfa6;
       background:rgba(255,255,255,0.03);">🇧🇩 Bengali NLP</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color:rgba(148,163,184,0.65);
+      border:1px solid rgba(255,255,255,0.09);color: #C4B5FD;
       background:rgba(255,255,255,0.03);">🎯 Classification</span>
   </div>
 </div>
