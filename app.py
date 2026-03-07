@@ -1,4 +1,4 @@
-import os #
+import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
@@ -113,9 +113,17 @@ EMPTY_RESULT = """
     <span style="font-size:28px;position:relative;z-index:1;opacity:0.5;">💬</span>
   </div>
   <p style="font-family:'Hind Siliguri',sans-serif;font-size:16px;font-weight:600;color:#a78bfa;margin:0;">কিছু একটা লিখুন বিশ্লেষণ করতে...</p>
-  <p style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:rgba(148,163,184,0.35);margin:0;">ENTER BANGLA TEXT ABOVE AND CLICK ANALYZE</p>
+  <p style="font-family:monospace;font-size:11px;letter-spacing:1.5px;color:white;margin:0;">ENTER BANGLA TEXT ABOVE AND CLICK ANALYZE</p>
 </div>
 """
+
+EXAMPLES = [
+    "এই পণ্যটি অসাধারণ! আমি খুব সন্তুষ্ট।",
+    "ডেলিভারি অনেক দেরিতে এসেছে, খুব খারাপ অভিজ্ঞতা।",
+    "কোয়ালিটি মোটামুটি ভালো, দাম একটু বেশি।",
+    "আমি একদমই খুশি নই, পণ্যটি প্রত্যাশা অনুযায়ী নয়।",
+    "চমৎকার সার্ভিস এবং দ্রুত ডেলিভারি।",
+]
 
 
 def predict_sentiment(text):
@@ -173,7 +181,6 @@ def predict_sentiment(text):
     background:linear-gradient(90deg,transparent,{color}99,transparent);"></div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;">
-
     <div style="display:flex;align-items:center;gap:16px;">
       <div style="
         width:70px;height:70px;flex-shrink:0;display:flex;
@@ -214,8 +221,8 @@ def predict_sentiment(text):
     </svg>
   </div>
 
-  <div style="font-family:monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
-    color:rgba(148,163,184,0.38);margin-bottom:8px;">CONFIDENCE SCORE</div>
+  <div style="font-family:monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
+    color:#c4b5fd;margin-bottom:8px;">CONFIDENCE SCORE</div>
   <div style="background:rgba(255,255,255,0.05);border-radius:100px;height:8px;
     position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
     <div style="width:{pct}%;height:100%;border-radius:100px;background:{bar_grad};
@@ -237,18 +244,18 @@ def predict_sentiment(text):
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:70px;">
       <span style="font-size:13px;">🔤</span>
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">{word_count}</span>
-      <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.55);letter-spacing:1px;">WORDS</span>
+      <span style="font-family:monospace;font-size:12px;color: #22D3EE;letter-spacing:1px;">WORDS</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:70px;">
       <span style="font-size:13px;">🎯</span>
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">{pct}%</span>
-      <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.55);letter-spacing:1px;">CONF</span>
+      <span style="font-family:monospace;font-size:12px;color: #22D3EE;letter-spacing:1px;">CONF</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:90px;">
       <span style="font-size:13px;">⚡</span>
-      <span style="font-family:monospace;font-size:11px;font-weight:700;color:#e2e8f0;">Transformer</span>
+      <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">Transformer</span>
     </div>
   </div>
 </div>
@@ -256,30 +263,24 @@ def predict_sentiment(text):
 
 
 # ============================================================
-# CSS — BATTLE-TESTED FOR GRADIO
+# CSS
 # ============================================================
 
 css = """
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
 
-/* ── KEYFRAMES ──────────────────────────────────── */
 @keyframes bsa-fadein { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
 @keyframes bsa-pulse  { 0%{transform:scale(1);opacity:0.8;}100%{transform:scale(2.4);opacity:0;} }
 @keyframes bsa-shim   { 0%{background-position:200% 0;}100%{background-position:-200% 0;} }
 @keyframes bsa-blink  { 0%,100%{opacity:1;}50%{opacity:0.15;} }
-@keyframes bsa-float  { 0%,100%{transform:translateY(0);}50%{transform:translateY(-18px);} }
 @keyframes bsa-aurora { 0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.7;} }
 
-/* ── PAGE BACKGROUND ────────────────────────────── */
 body { background: #070a14 !important; }
-
 .gradio-container {
   background: #070a14 !important;
   font-family: 'Outfit', 'Hind Siliguri', sans-serif !important;
   min-height: 100vh !important;
 }
-
-/* Aurora layer */
 .gradio-container::before {
   content:'';
   position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -289,8 +290,6 @@ body { background: #070a14 !important; }
     radial-gradient(ellipse 45% 35% at 50% 50%, rgba(0,229,160,0.06) 0%, transparent 55%);
   animation: bsa-aurora 10s ease-in-out infinite alternate;
 }
-
-/* Transparent inner containers */
 .gradio-container > .main,
 .gradio-container > .main > .wrap,
 .contain {
@@ -298,7 +297,6 @@ body { background: #070a14 !important; }
   max-width: 100% !important;
 }
 
-/* ── CENTERING WRAPPER ──────────────────────────── */
 #bsa-wrap {
   max-width: 800px !important;
   margin: 0 auto !important;
@@ -307,8 +305,6 @@ body { background: #070a14 !important; }
   z-index: 1 !important;
   background: transparent !important;
 }
-
-/* Kill Gradio default borders on everything inside */
 #bsa-wrap .block,
 #bsa-wrap .form,
 #bsa-wrap .gap,
@@ -322,7 +318,6 @@ body { background: #070a14 !important; }
   gap: 0 !important;
 }
 
-/* ── MAIN CARD ──────────────────────────────────── */
 #bsa-card {
   background: rgba(13,16,35,0.88) !important;
   border: 1px solid rgba(255,255,255,0.09) !important;
@@ -342,13 +337,10 @@ body { background: #070a14 !important; }
   animation:bsa-shim 4s linear infinite;
 }
 
-/* ── TEXTAREA — MAXIMUM SPECIFICITY ─────────────── */
-/* Use every possible selector combo to override Gradio */
+/* ── TEXTAREA ── */
 .gradio-container textarea,
 #bsa-card textarea,
 #bsa-wrap textarea,
-.svelte-1ipelgc textarea,
-textarea.scroll-hide,
 textarea {
   background-color: rgba(15,18,40,0.8) !important;
   background: rgba(15,18,40,0.8) !important;
@@ -366,35 +358,22 @@ textarea {
   box-shadow: none !important;
 }
 .gradio-container textarea:focus,
-#bsa-card textarea:focus,
 textarea:focus {
   background-color: rgba(20,24,55,0.9) !important;
   background: rgba(20,24,55,0.9) !important;
   border-color: rgba(124,58,237,0.6) !important;
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.14), 0 0 30px rgba(124,58,237,0.07) !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.14) !important;
   outline: none !important;
   color: #e2e8f0 !important;
   -webkit-text-fill-color: #e2e8f0 !important;
 }
-textarea::placeholder,
-.gradio-container textarea::placeholder {
-  color: rgba(148,163,184,0.3) !important;
-  -webkit-text-fill-color: rgba(148,163,184,0.3) !important;
-}
+textarea::placeholder { color: rgba(148,163,184,0.3) !important; -webkit-text-fill-color: rgba(148,163,184,0.3) !important; }
+label > span, .gradio-container label > span { display: none !important; }
 
-/* Label spans — hide them */
-label > span,
-.gr-form label > span,
-.gradio-container label > span { display: none !important; }
-
-/* ── BUTTONS ────────────────────────────────────── */
-/* Primary button — all Gradio versions */
+/* ── PRIMARY BUTTON ── */
 .gradio-container button.primary,
-.gradio-container button[variant="primary"],
 button.primary,
-button[variant="primary"],
-#bsa-card button.primary,
-#bsa-wrap button.primary {
+button[variant="primary"] {
   background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;
   border: 1px solid rgba(139,92,246,0.45) !important;
   border-radius: 13px !important;
@@ -409,19 +388,14 @@ button[variant="primary"],
   box-shadow: 0 4px 20px rgba(124,58,237,0.38) !important;
   text-shadow: none !important;
 }
-.gradio-container button.primary:hover,
-button.primary:hover,
-button[variant="primary"]:hover {
+button.primary:hover, button[variant="primary"]:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 10px 35px rgba(124,58,237,0.58) !important;
   background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
 }
-.gradio-container button.primary:active,
-button.primary:active { transform: translateY(0) !important; }
 
-/* Secondary button */
+/* ── SECONDARY BUTTON ── */
 .gradio-container button.secondary,
-.gradio-container button[variant="secondary"],
 button.secondary,
 button[variant="secondary"] {
   background: rgba(255,255,255,0.04) !important;
@@ -437,8 +411,7 @@ button[variant="secondary"] {
   box-shadow: none !important;
   text-shadow: none !important;
 }
-button.secondary:hover,
-button[variant="secondary"]:hover {
+button.secondary:hover, button[variant="secondary"]:hover {
   background: rgba(255,255,255,0.08) !important;
   border-color: rgba(255,255,255,0.18) !important;
   color: #e2e8f0 !important;
@@ -446,52 +419,65 @@ button[variant="secondary"]:hover {
   transform: translateY(-1px) !important;
 }
 
-/* Button row */
+/* ── EXAMPLE BUTTONS ── */
+.ex-btn button,
+.gradio-container .ex-btn button {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-family: 'Hind Siliguri', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  line-height: 1.6 !important;
+  white-space: normal !important;
+  height: auto !important;
+  min-height: unset !important;
+}
+.ex-btn button:hover,
+.gradio-container .ex-btn button:hover {
+  background: rgba(124,58,237,0.12) !important;
+  border-color: rgba(124,58,237,0.35) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+/* ── EXAMPLE BUTTON ROW — remove Gradio row padding/gaps ── */
+.ex-btn-row {
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  margin: 0 !important;
+}
+.ex-btn-row .block,
+.ex-btn-row .form {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+/* ── BUTTON ROW ── */
 .bsa-btnrow { gap: 12px !important; margin: 18px 0 28px !important; }
 .bsa-btnrow .block, .bsa-btnrow .form {
   background: transparent !important; border: none !important; box-shadow: none !important;
 }
 
-/* ── RESULT OUTPUT ──────────────────────────────── */
-.bsa-result .block,
-.bsa-result .prose,
-.bsa-result .wrap,
-.bsa-result > div {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
+/* ── RESULT ── */
+.bsa-result .block, .bsa-result .prose, .bsa-result .wrap, .bsa-result > div {
+  background: transparent !important; border: none !important;
+  box-shadow: none !important; padding: 0 !important;
 }
 
-/* ── EXAMPLES ───────────────────────────────────── */
-table {
-  width: 100% !important;
-  border-collapse: separate !important;
-  border-spacing: 0 5px !important;
-}
-table thead { display: none !important; }
-table td {
-  font-family: 'Hind Siliguri', sans-serif !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: #94a3b8 !important;
-  -webkit-text-fill-color: #94a3b8 !important;
-  background: rgba(255,255,255,0.025) !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
-  padding: 11px 16px !important;
-  border-radius: 10px !important;
-  cursor: pointer !important;
-  transition: all 0.2s !important;
-}
-table tr:hover td {
-  background: rgba(124,58,237,0.1) !important;
-  color: #e2e8f0 !important;
-  -webkit-text-fill-color: #e2e8f0 !important;
-  border-color: rgba(124,58,237,0.28) !important;
-  transform: translateX(4px) !important;
-}
-
-/* ── HIDE GRADIO CHROME ─────────────────────────── */
 footer, .svelte-footer, .gr-footer { display: none !important; }
 """
 
@@ -506,116 +492,58 @@ HERO = """
 @keyframes bsa-blink2 { 0%,100%{opacity:1;}50%{opacity:0.15;} }
 @keyframes bsa-float2 { 0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-18px);} }
 </style>
-
 <div style="text-align:center;padding:64px 20px 50px;position:relative;overflow:visible;">
-
-  <!-- Orb purple -->
   <div style="position:absolute;width:560px;height:320px;
     background:radial-gradient(circle,rgba(124,58,237,0.2) 0%,transparent 65%);
-    filter:blur(100px);border-radius:50%;
-    top:-60px;left:50%;transform:translateX(-50%);
-    pointer-events:none;z-index:0;
-    animation:bsa-float2 9s ease-in-out infinite;"></div>
-
-  <!-- Orb cyan -->
+    filter:blur(100px);border-radius:50%;top:-60px;left:50%;transform:translateX(-50%);
+    pointer-events:none;z-index:0;animation:bsa-float2 9s ease-in-out infinite;"></div>
   <div style="position:absolute;width:260px;height:260px;
     background:radial-gradient(circle,rgba(34,211,238,0.13) 0%,transparent 65%);
-    filter:blur(80px);border-radius:50%;
-    top:0;right:0;pointer-events:none;z-index:0;"></div>
-
-  <!-- Status pill -->
-  <div style="
-    display:inline-flex;align-items:center;gap:8px;
+    filter:blur(80px);border-radius:50%;top:0;right:0;pointer-events:none;z-index:0;"></div>
+  <div style="display:inline-flex;align-items:center;gap:8px;
     font-family:monospace;font-size:10px;letter-spacing:3.5px;text-transform:uppercase;
     color:#22d3ee;border:1px solid rgba(34,211,238,0.22);
     padding:7px 22px;border-radius:100px;background:rgba(34,211,238,0.05);
-    margin-bottom:26px;position:relative;z-index:1;
-  ">
+    margin-bottom:26px;position:relative;z-index:1;">
     <span style="width:6px;height:6px;border-radius:50%;background:#22d3ee;
-      box-shadow:0 0 7px #22d3ee;animation:bsa-blink2 2s ease-in-out infinite;
-      display:inline-block;"></span>
+      box-shadow:0 0 7px #22d3ee;animation:bsa-blink2 2s ease-in-out infinite;display:inline-block;"></span>
     transformer · nlp · bengali
   </div>
-
-  <!-- Title -->
   <div style="font-family:'Outfit',sans-serif;font-size:clamp(34px,6vw,58px);
-    font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:16px;
-    position:relative;z-index:1;">
+    font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:16px;position:relative;z-index:1;">
     <span style="display:block;color:#c4b5fd;">Bangla Sentiment</span>
     <span style="display:block;color:#22d3ee;">Analyzer</span>
   </div>
-
-  <!-- Subtitle -->
   <p style="font-family:'Hind Siliguri',sans-serif;font-size:17px;
-    color:white !important;margin-bottom:26px;position:relative;z-index:1;">
+    color:white;margin-bottom:26px;position:relative;z-index:1;">
     বাংলা রিভিউ বা মন্তব্য লিখুন — তাৎক্ষণিক বিশ্লেষণ পান
   </p>
-
-  <!-- Badges -->
   <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;position:relative;z-index:1;">
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color: #00ffdfa6;
-      background:rgba(255,255,255,0.03);">⚡ TensorFlow</span>
+      border:1px solid rgba(255,255,255,0.09);color:#00ffdfa6;background:rgba(255,255,255,0.03);">⚡ TensorFlow</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color: #C4B5FD;
-      background:rgba(255,255,255,0.03);">🔤 Transformer</span>
+      border:1px solid rgba(255,255,255,0.09);color:#C4B5FD;background:rgba(255,255,255,0.03);">🔤 Transformer</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color: #00ffdfa6;
-      background:rgba(255,255,255,0.03);">🇧🇩 Bengali NLP</span>
+      border:1px solid rgba(255,255,255,0.09);color:#00ffdfa6;background:rgba(255,255,255,0.03);
+      display:inline-flex;align-items:center;gap:6px;">
+      <img src="https://flagcdn.com/16x12/bd.png" width="16" height="12"
+        style="border-radius:2px;vertical-align:middle;" alt="BD"> Bengali NLP</span>
     <span style="font-family:monospace;font-size:11px;padding:6px 16px;border-radius:100px;
-      border:1px solid rgba(255,255,255,0.09);color: #C4B5FD;
-      background:rgba(255,255,255,0.03);">🎯 Classification</span>
+      border:1px solid rgba(255,255,255,0.09);color:#C4B5FD;background:rgba(255,255,255,0.03);">🎯 Classification</span>
   </div>
 </div>
 """
 
-SEC_INPUT = """<div style="display:flex;align-items:center;gap:10px;
-  font-family:monospace;font-size:10px;letter-spacing:3.5px;text-transform:uppercase;
-  color:rgba(255,255,255,0.32);margin-bottom:12px;">
-  <span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;flex-shrink:0;
-    background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>Input
-</div>"""
-
-SEC_RESULT = """<div style="display:flex;align-items:center;gap:10px;
-  font-family:monospace;font-size:10px;letter-spacing:3.5px;text-transform:uppercase;
-  color:rgba(255,255,255,0.32);margin-top:8px;margin-bottom:12px;">
-  <span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;flex-shrink:0;
-    background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>Result
-</div>"""
-
-DIVIDER = """<div style="height:1px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);
-  margin:26px 0 18px;"></div>"""
-
-EX_LABEL = """<div style="font-family:monospace;font-size:9px;letter-spacing:3px;
-  text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:12px;">
-  ✦ Example inputs — click to try
-</div>"""
-
-FOOTER = """<div style="text-align:center;padding:32px 0 10px;">
-  <p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:rgba(148,163,184,0.18);">
-    Powered by Custom Transformer
-    <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;
-      border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span>
-    Built with TensorFlow &amp; Gradio
-    <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;
-      border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span>
-    Bengali NLP
-  </p>
-</div>"""
+SEC_INPUT  = """<div style="display:flex;align-items:center;gap:10px;font-family:monospace;font-size:13px;letter-spacing:3.5px;text-transform:uppercase;color:white;margin-bottom:12px;"><span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;flex-shrink:0;background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>Input</div>"""
+SEC_RESULT = """<div style="display:flex;align-items:center;gap:10px;font-family:monospace;font-size:13px;letter-spacing:3.5px;text-transform:uppercase;color:white;margin-top:8px;margin-bottom:12px;"><span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;flex-shrink:0;background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>Result</div>"""
+DIVIDER    = """<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);margin:26px 0 18px;"></div>"""
+EX_LABEL   = """<div style="font-family:monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#A78BFA;margin-bottom:10px;">✦ Example inputs — click to try</div>"""
+FOOTER     = """<div style="text-align:center;padding:32px 0 10px;"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#A78BFA;">Powered by Custom Transformer <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Built with TensorFlow &amp; Gradio <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Bengali NLP</p></div>"""
 
 
 # ============================================================
 # GRADIO UI
 # ============================================================
-
-examples_data = [
-    ["এই পণ্যটি অসাধারণ! আমি খুব সন্তুষ্ট।"],
-    ["ডেলিভারি অনেক দেরিতে এসেছে, খুব খারাপ অভিজ্ঞতা।"],
-    ["কোয়ালিটি মোটামুটি ভালো, দাম একটু বেশি।"],
-    ["আমি একদমই খুশি নই, পণ্যটি প্রত্যাশা অনুযায়ী নয়।"],
-    ["চমৎকার সার্ভিস এবং দ্রুত ডেলিভারি।"],
-]
 
 with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
 
@@ -630,8 +558,7 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
             text_input = gr.Textbox(
                 lines=4,
                 placeholder="এখানে আপনার বাংলা রিভিউ বা মন্তব্য লিখুন...",
-                label="",
-                show_label=False,
+                label="", show_label=False,
             )
 
             with gr.Row(elem_classes="bsa-btnrow"):
@@ -646,13 +573,32 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
             gr.HTML(DIVIDER)
             gr.HTML(EX_LABEL)
 
-            gr.Examples(examples=examples_data, inputs=text_input, label="")
+            # ── EXAMPLE BUTTONS — plain gr.Button wired via .click() ──
+            # Row 1
+            with gr.Row(elem_classes="ex-btn-row"):
+                ex1 = gr.Button(EXAMPLES[0], elem_classes="ex-btn")
+                ex2 = gr.Button(EXAMPLES[1], elem_classes="ex-btn")
+            # Row 2
+            with gr.Row(elem_classes="ex-btn-row"):
+                ex3 = gr.Button(EXAMPLES[2], elem_classes="ex-btn")
+                ex4 = gr.Button(EXAMPLES[3], elem_classes="ex-btn")
+            # Row 3
+            with gr.Row(elem_classes="ex-btn-row"):
+                ex5 = gr.Button(EXAMPLES[4], elem_classes="ex-btn")
 
         gr.HTML(FOOTER)
 
+    # ── Main events ──
     submit_btn.click(fn=predict_sentiment, inputs=text_input, outputs=output_html)
     text_input.submit(fn=predict_sentiment, inputs=text_input, outputs=output_html)
     clear_btn.click(fn=lambda: ("", EMPTY_RESULT), inputs=None, outputs=[text_input, output_html])
+
+    # ── Example button events — each sets the textbox value ──
+    ex1.click(fn=lambda: EXAMPLES[0], inputs=None, outputs=text_input)
+    ex2.click(fn=lambda: EXAMPLES[1], inputs=None, outputs=text_input)
+    ex3.click(fn=lambda: EXAMPLES[2], inputs=None, outputs=text_input)
+    ex4.click(fn=lambda: EXAMPLES[3], inputs=None, outputs=text_input)
+    ex5.click(fn=lambda: EXAMPLES[4], inputs=None, outputs=text_input)
 
 
 if __name__ == "__main__":
