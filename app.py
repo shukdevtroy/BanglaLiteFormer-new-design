@@ -197,7 +197,7 @@ html, body {
   min-width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
-  background: #897d7d !important;
+  background: #858282ab !important;
   font-family: 'Syne', sans-serif !important;
   color: white !important;
 }
