@@ -501,7 +501,7 @@ HERO = """
     background:radial-gradient(circle,rgba(34,211,238,0.13) 0%,transparent 65%);
     filter:blur(80px);border-radius:50%;top:0;right:0;pointer-events:none;z-index:0;"></div>
   <div style="display:inline-flex;align-items:center;gap:8px;
-    font-family:monospace;font-size:10px;letter-spacing:3.5px;text-transform:uppercase;
+    font-family:monospace;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;
     color:#22d3ee;border:1px solid rgba(34,211,238,0.22);
     padding:7px 22px;border-radius:100px;background:rgba(34,211,238,0.05);
     margin-bottom:26px;position:relative;z-index:1;">
