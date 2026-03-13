@@ -367,7 +367,7 @@ textarea:focus {
   color: #e2e8f0 !important;
   -webkit-text-fill-color: #e2e8f0 !important;
 }
-textarea::placeholder { color: navajowhite !important; -webkit-text-fill-color: rgba(148,163,184,0.3) !important; }
+textarea::placeholder { color: navajowhite !important; -webkit-text-fill-color: navajowhite !important; }
 label > span, .gradio-container label > span { display: none !important; }
 
 /* ── PRIMARY BUTTON ── */
