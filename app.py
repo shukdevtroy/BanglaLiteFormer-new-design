@@ -425,8 +425,8 @@ button.secondary:hover, button[variant="secondary"]:hover {
   background: rgba(255,255,255,0.03) !important;
   border: 1px solid rgba(255,255,255,0.1) !important;
   border-radius: 10px !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+  color: navajowhite !important;
+  -webkit-text-fill-color: navajowhite !important;
   font-family: 'Hind Siliguri', sans-serif !important;
   font-size: 14px !important;
   font-weight: 500 !important;
