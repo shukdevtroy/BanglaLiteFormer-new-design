@@ -422,7 +422,7 @@ button.secondary:hover, button[variant="secondary"]:hover {
 /* ── EXAMPLE BUTTONS ── */
 .ex-btn button,
 .gradio-container .ex-btn button {
-  background: white !important;
+  background: #ffffff !important;
   border: 1px solid rgba(255,255,255,0.1) !important;
   border-radius: 10px !important;
   color: navajowhite !important;
