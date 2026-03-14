@@ -679,7 +679,7 @@ INFO_PANEL = """
     <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
       background:rgba(124,58,237,0.08);border-left:3px solid rgba(124,58,237,0.5);
       font-family:monospace;font-size:11px;color:rgba(196,181,253,0.75);line-height:1.7;">
-      ℹ️ &nbsp;Self-attention complexity scales as <b>O(n²·d)</b> where n = sequence length and d = embedding dimension.
+      ℹ️ &nbsp;Self-attention complexity scales as <b style="color: white !important;">O(n²·d)</b> where n = sequence length and d = embedding dimension.
       At n=80 this is negligible — the dominant cost is the first inference call due to TF graph compilation
       (TensorFlow's XLA warm-up). Subsequent calls are significantly faster.
     </div>
