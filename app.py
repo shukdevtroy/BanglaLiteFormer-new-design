@@ -1,4 +1,5 @@
-import os #
+import os
+import time  # ← for latency / inference-time measurement
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
@@ -130,9 +131,25 @@ def predict_sentiment(text):
     if not text or not text.strip():
         return EMPTY_RESULT
 
-    processed = preprocess_text(text)
-    prediction = model.predict(processed, verbose=0)[0]
+    # ── Timing: total wall-clock time (latency) ──────────────
+    t_start = time.perf_counter()
 
+    # ── Preprocessing ────────────────────────────────────────
+    t_pre0 = time.perf_counter()
+    processed = preprocess_text(text)
+    t_pre1 = time.perf_counter()
+    preprocess_ms = (t_pre1 - t_pre0) * 1000
+
+    # ── Inference (model.predict) ─────────────────────────────
+    t_inf0 = time.perf_counter()
+    prediction = model.predict(processed, verbose=0)[0]
+    t_inf1 = time.perf_counter()
+    inference_ms = (t_inf1 - t_inf0) * 1000
+
+    # ── Total latency ─────────────────────────────────────────
+    latency_ms = (time.perf_counter() - t_start) * 1000
+
+    # ── Decode prediction ─────────────────────────────────────
     if np.ndim(prediction) == 0 or len(np.atleast_1d(prediction)) == 1:
         score = float(prediction)
         is_positive = score >= 0.5
@@ -144,6 +161,10 @@ def predict_sentiment(text):
 
     pct = int(confidence * 100)
     word_count = len(text.split())
+    char_count = len(text.strip())
+
+    # ── Uncertainty flag (confidence near 0.5) ───────────────
+    is_uncertain = confidence < 0.65
 
     radius = 52
     circ = 2 * 3.14159 * radius
@@ -170,6 +191,56 @@ def predict_sentiment(text):
         bar_grad  = "linear-gradient(90deg,#f8717144,#f87171)"
         intensity = "উচ্চ" if pct >= 80 else ("মাঝারি" if pct >= 60 else "হালকা")
 
+    # ── Uncertainty banner (shown only when confidence < 65%) ─
+    uncertain_banner = ""
+    if is_uncertain:
+        uncertain_banner = f"""
+        <div style="
+          margin-bottom:16px;padding:10px 16px;border-radius:10px;
+          background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.28);
+          display:flex;align-items:center;gap:10px;
+        ">
+          <span style="font-size:18px;">⚠️</span>
+          <span style="font-family:monospace;font-size:11px;letter-spacing:1.5px;color:#fbbf24;">
+            LOW CONFIDENCE ({pct}%) — PREDICTION MAY BE UNRELIABLE
+          </span>
+        </div>
+        """
+
+    # ── Performance stats row ──────────────────────────────────
+    stats_row = f"""
+    <div style="margin-top:18px;">
+      <div style="font-family:monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
+        color:#22d3ee;margin-bottom:8px;">⏱ PERFORMANCE METRICS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:3px;padding:10px 16px;border-radius:12px;
+          border:1px solid rgba(34,211,238,0.18);background:rgba(34,211,238,0.05);flex:1;min-width:90px;">
+          <span style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#22d3ee;">TOTAL LATENCY</span>
+          <span style="font-family:monospace;font-size:18px;font-weight:700;color:#e2e8f0;">{latency_ms:.1f}<span style="font-size:11px;color:#94a3b8;"> ms</span></span>
+          <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.45);">wall-clock end-to-end</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;padding:10px 16px;border-radius:12px;
+          border:1px solid rgba(167,139,250,0.18);background:rgba(167,139,250,0.05);flex:1;min-width:90px;">
+          <span style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#a78bfa;">INFERENCE TIME</span>
+          <span style="font-family:monospace;font-size:18px;font-weight:700;color:#e2e8f0;">{inference_ms:.1f}<span style="font-size:11px;color:#94a3b8;"> ms</span></span>
+          <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.45);">model.predict only</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;padding:10px 16px;border-radius:12px;
+          border:1px solid rgba(0,229,160,0.18);background:rgba(0,229,160,0.05);flex:1;min-width:90px;">
+          <span style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#00e5a0;">PREPROCESS</span>
+          <span style="font-family:monospace;font-size:18px;font-weight:700;color:#e2e8f0;">{preprocess_ms:.1f}<span style="font-size:11px;color:#94a3b8;"> ms</span></span>
+          <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.45);">tokenize + pad</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;padding:10px 16px;border-radius:12px;
+          border:1px solid rgba(251,191,36,0.18);background:rgba(251,191,36,0.05);flex:1;min-width:90px;">
+          <span style="font-family:monospace;font-size:9px;letter-spacing:2px;color:#fbbf24;">CHARS / TOKENS</span>
+          <span style="font-family:monospace;font-size:18px;font-weight:700;color:#e2e8f0;">{char_count}<span style="font-size:11px;color:#94a3b8;"> / {MAX_LEN}</span></span>
+          <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.45);">input / max seq len</span>
+        </div>
+      </div>
+    </div>
+    """
+
     return f"""
 <div style="
   background:{card_bg};border:1.5px solid {card_bdr};border-radius:20px;
@@ -179,6 +250,8 @@ def predict_sentiment(text):
 ">
   <div style="position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,{color}99,transparent);"></div>
+
+  {uncertain_banner}
 
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:16px;">
@@ -206,7 +279,6 @@ def predict_sentiment(text):
         <div style="font-family:'Hind Siliguri',sans-serif;font-size:15px;color:rgba(148,163,184,0.75);font-weight:500;">{label_bn}</div>
       </div>
     </div>
-
     <svg viewBox="0 0 120 120" width="110" height="110" style="display:block;flex-shrink:0;">
       <circle cx="60" cy="60" r="{radius}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9"/>
       <circle cx="60" cy="60" r="{radius}" fill="none"
@@ -244,13 +316,13 @@ def predict_sentiment(text):
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:70px;">
       <span style="font-size:13px;">🔤</span>
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">{word_count}</span>
-      <span style="font-family:monospace;font-size:12px;color: #22D3EE;letter-spacing:1px;">WORDS</span>
+      <span style="font-family:monospace;font-size:12px;color:#22D3EE;letter-spacing:1px;">WORDS</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:70px;">
       <span style="font-size:13px;">🎯</span>
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">{pct}%</span>
-      <span style="font-family:monospace;font-size:12px;color: #22D3EE;letter-spacing:1px;">CONF</span>
+      <span style="font-family:monospace;font-size:12px;color:#22D3EE;letter-spacing:1px;">CONF</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:90px;">
@@ -258,6 +330,8 @@ def predict_sentiment(text):
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">Transformer</span>
     </div>
   </div>
+
+  {stats_row}
 </div>
 """
 
@@ -268,13 +342,11 @@ def predict_sentiment(text):
 
 css = """
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
-
 @keyframes bsa-fadein { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
 @keyframes bsa-pulse  { 0%{transform:scale(1);opacity:0.8;}100%{transform:scale(2.4);opacity:0;} }
 @keyframes bsa-shim   { 0%{background-position:200% 0;}100%{background-position:-200% 0;} }
 @keyframes bsa-blink  { 0%,100%{opacity:1;}50%{opacity:0.15;} }
 @keyframes bsa-aurora { 0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.7;} }
-
 body { background: #070a14 !important; }
 .gradio-container {
   background: #070a14 !important;
@@ -296,7 +368,6 @@ body { background: #070a14 !important; }
   background: transparent !important;
   max-width: 100% !important;
 }
-
 #bsa-wrap {
   max-width: 800px !important;
   margin: 0 auto !important;
@@ -317,7 +388,6 @@ body { background: #070a14 !important; }
   padding: 0 !important;
   gap: 0 !important;
 }
-
 #bsa-card {
   background: rgba(13,16,35,0.88) !important;
   border: 1px solid rgba(255,255,255,0.09) !important;
@@ -336,7 +406,16 @@ body { background: #070a14 !important; }
   background-size:200% 100%;
   animation:bsa-shim 4s linear infinite;
 }
-
+#bsa-info {
+  background: rgba(13,16,35,0.88) !important;
+  border: 1px solid rgba(255,255,255,0.09) !important;
+  border-radius: 24px !important;
+  padding: 32px 36px !important;
+  margin-top: 20px !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4) !important;
+}
 /* ── TEXTAREA ── */
 .gradio-container textarea,
 #bsa-card textarea,
@@ -369,7 +448,6 @@ textarea:focus {
 }
 textarea::placeholder { color: navajowhite !important; -webkit-text-fill-color: navajowhite !important; }
 label > span, .gradio-container label > span { display: none !important; }
-
 /* ── PRIMARY BUTTON ── */
 .gradio-container button.primary,
 button.primary,
@@ -393,7 +471,6 @@ button.primary:hover, button[variant="primary"]:hover {
   box-shadow: 0 10px 35px rgba(124,58,237,0.58) !important;
   background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
 }
-
 /* ── SECONDARY BUTTON ── */
 .gradio-container button.secondary,
 button.secondary,
@@ -418,7 +495,6 @@ button.secondary:hover, button[variant="secondary"]:hover {
   -webkit-text-fill-color: #e2e8f0 !important;
   transform: translateY(-1px) !important;
 }
-
 /* ── EXAMPLE BUTTONS ── */
 .ex-btn button,
 .gradio-container .ex-btn button {
@@ -450,8 +526,7 @@ button.secondary:hover, button[variant="secondary"]:hover {
   transform: translateX(3px) !important;
   box-shadow: none !important;
 }
-
-/* ── EXAMPLE BUTTON ROW — remove Gradio row padding/gaps ── */
+/* ── EXAMPLE BUTTON ROW ── */
 .ex-btn-row {
   gap: 8px !important;
   flex-wrap: wrap !important;
@@ -465,19 +540,16 @@ button.secondary:hover, button[variant="secondary"]:hover {
   padding: 0 !important;
   min-width: 0 !important;
 }
-
 /* ── BUTTON ROW ── */
 .bsa-btnrow { gap: 12px !important; margin: 18px 0 28px !important; }
 .bsa-btnrow .block, .bsa-btnrow .form {
   background: transparent !important; border: none !important; box-shadow: none !important;
 }
-
 /* ── RESULT ── */
 .bsa-result .block, .bsa-result .prose, .bsa-result .wrap, .bsa-result > div {
   background: transparent !important; border: none !important;
   box-shadow: none !important; padding: 0 !important;
 }
-
 footer, .svelte-footer, .gr-footer { display: none !important; }
 """
 
@@ -540,6 +612,268 @@ DIVIDER    = """<div style="height:1px;background:linear-gradient(90deg,transpar
 EX_LABEL   = """<div style="font-family:monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#A78BFA;margin-bottom:10px;">✦ Example inputs — click to try</div>"""
 FOOTER     = """<div style="text-align:center;padding:32px 0 10px;"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#A78BFA;">Powered by Custom Transformer <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Built with TensorFlow &amp; Gradio <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Bengali NLP</p></div>"""
 
+# ── NEW: Static information panel ─────────────────────────────────────────────
+INFO_PANEL = """
+<div id="bsa-info" style="
+  background:rgba(13,16,35,0.88);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:24px;
+  padding:32px 36px;
+  position:relative;
+  overflow:hidden;
+  backdrop-filter:blur(20px);
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+">
+  <!-- top shimmer line -->
+  <div style="position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(124,58,237,0.7) 40%,rgba(34,211,238,0.9) 60%,transparent);"></div>
+
+  <!-- Section header -->
+  <div style="font-family:monospace;font-size:12px;letter-spacing:3.5px;text-transform:uppercase;
+    color:#22d3ee;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+    <span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;
+      background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>
+    Model &amp; Performance Reference
+  </div>
+
+  <!-- ── 1. Computational Cost ── -->
+  <div style="margin-bottom:24px;padding:20px;border-radius:14px;
+    background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.18);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:20px;">💻</span>
+      <span style="font-family:monospace;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+        color:#a78bfa;font-weight:700;">1 · Computational Cost</span>
+    </div>
+    <div style="font-family:'Hind Siliguri',sans-serif;font-size:14px;
+      color:rgba(226,232,240,0.82);line-height:1.85;">
+      This model is a <b style="color:#c4b5fd;">single-head Transformer</b> trained for binary text classification.
+      Its computational footprint is intentionally lightweight:
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:10px;margin-top:14px;">
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px;">PARAMETERS</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">~1–5 M</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">typical small Transformer</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px;">MEMORY (RAM)</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">~50–200 MB</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">model weights + TF runtime</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px;">HARDWARE</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">CPU only</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">GPU not required at inference</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px;">MAX SEQ LEN</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">80 tokens</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">O(n²) attention applies</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
+      background:rgba(124,58,237,0.08);border-left:3px solid rgba(124,58,237,0.5);
+      font-family:monospace;font-size:11px;color:rgba(196,181,253,0.75);line-height:1.7;">
+      ℹ️ &nbsp;Self-attention complexity scales as <b>O(n²·d)</b> where n = sequence length and d = embedding dimension.
+      At n=80 this is negligible — the dominant cost is the first inference call due to TF graph compilation
+      (TensorFlow's XLA warm-up). Subsequent calls are significantly faster.
+    </div>
+  </div>
+
+  <!-- ── 2. Latency ── -->
+  <div style="margin-bottom:24px;padding:20px;border-radius:14px;
+    background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.16);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:20px;">🌐</span>
+      <span style="font-family:monospace;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+        color:#22d3ee;font-weight:700;">2 · Latency</span>
+    </div>
+    <div style="font-family:'Hind Siliguri',sans-serif;font-size:14px;
+      color:rgba(226,232,240,0.82);line-height:1.85;margin-bottom:14px;">
+      <b style="color:#22d3ee;">Latency</b> is the total wall-clock time from receiving user input to returning the
+      result — it includes tokenization, padding, model forward-pass, and HTML rendering.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#22d3ee;margin-bottom:4px;">1st REQUEST (cold)</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">500 ms – 3 s</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">TF graph compilation</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#22d3ee;margin-bottom:4px;">WARM REQUESTS</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">20 – 80 ms</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">CPU inference, typical</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#22d3ee;margin-bottom:4px;">WITH GPU</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">&lt; 10 ms</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">if CUDA is available</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
+      background:rgba(34,211,238,0.07);border-left:3px solid rgba(34,211,238,0.4);
+      font-family:monospace;font-size:11px;color:rgba(167,243,254,0.7);line-height:1.7;">
+      ℹ️ &nbsp;Network latency (Gradio UI ↔ Python backend) adds ~5–15 ms on localhost.
+      On Hugging Face Spaces or remote servers, add 50–150 ms round-trip depending on geography.
+    </div>
+  </div>
+
+  <!-- ── 3. Inference Time ── -->
+  <div style="margin-bottom:24px;padding:20px;border-radius:14px;
+    background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.16);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:20px;">⚡</span>
+      <span style="font-family:monospace;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+        color:#00e5a0;font-weight:700;">3 · Inference Time</span>
+    </div>
+    <div style="font-family:'Hind Siliguri',sans-serif;font-size:14px;
+      color:rgba(226,232,240,0.82);line-height:1.85;margin-bottom:14px;">
+      <b style="color:#00e5a0;">Inference time</b> measures only the <code style="color:#00e5a0;
+      background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;">model.predict()</code> call —
+      the neural network forward pass itself. This is the pure compute cost and excludes
+      tokenization, Gradio overhead, and network round-trips. Each run shows the <em>live</em>
+      measured value above in the result card.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#00e5a0;margin-bottom:4px;">BATCH SIZE</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">1 sample</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">single-text inference</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#00e5a0;margin-bottom:4px;">TYPICAL RANGE</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">5 – 50 ms</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">warm, CPU, seq=80</div>
+      </div>
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
+        border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:monospace;font-size:10px;letter-spacing:1.5px;color:#00e5a0;margin-bottom:4px;">VARIABILITY</div>
+        <div style="font-family:monospace;font-size:16px;font-weight:700;color:#e2e8f0;">±10–30%</div>
+        <div style="font-family:monospace;font-size:10px;color:rgba(148,163,184,0.45);">OS scheduling, cache state</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
+      background:rgba(0,229,160,0.06);border-left:3px solid rgba(0,229,160,0.4);
+      font-family:monospace;font-size:11px;color:rgba(110,231,183,0.75);line-height:1.7;">
+      ℹ️ &nbsp;First-call inference is slower because TensorFlow traces and compiles the computation graph
+      (XLA/JIT). After the first call the compiled graph is cached in memory, making all
+      subsequent inferences significantly faster and more consistent.
+    </div>
+  </div>
+
+  <!-- ── 4. When Prediction May Vary ── -->
+  <div style="padding:20px;border-radius:14px;
+    background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.18);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:20px;">⚠️</span>
+      <span style="font-family:monospace;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+        color:#fbbf24;font-weight:700;">4 · When Predictions May Vary or Be Unreliable</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">🔀</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">MIXED SENTIMENT</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            Text containing both positive and negative signals (e.g., "পণ্যটি সুন্দর কিন্তু দাম বেশি") confuses the
+            binary classifier. Confidence will hover near 50 % and may flip with small edits.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">🔤</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">OOV / RARE VOCABULARY</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            Words not seen during training are mapped to an unknown token <code style="color:#fbbf24;
+            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">&lt;UNK&gt;</code>.
+            Heavy use of slang, dialect, transliteration, or technical jargon will degrade accuracy.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">🌐</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">CODE-SWITCHING (BANGLISH)</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            Mixing Bangla script with English words or Roman-script Bangla causes many tokens to be
+            OOV, making predictions unreliable. Use pure Unicode Bangla for best results.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">📏</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">VERY SHORT OR VERY LONG TEXT</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            Single-word inputs lack context. Texts exceeding 80 tokens are silently truncated —
+            sentiment expressed only in the trailing portion will be ignored entirely.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">😏</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">SARCASM &amp; IRONY</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            The model has no pragmatic understanding. Ironic phrases like "হ্যাঁ, অসাধারণ সার্ভিস!" (sarcastic)
+            are likely classified as Positive because the surface tokens are positive.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">🎭</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">DOMAIN SHIFT</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            If the training data consisted mainly of product reviews, the model may perform poorly
+            on political commentary, news text, or social media posts with different linguistic patterns.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
+        border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:16px;flex-shrink:0;">🎲</span>
+        <div>
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">DROPOUT AT INFERENCE (if training=True)</div>
+          <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
+            Dropout layers are disabled during inference (<code style="color:#fbbf24;
+            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">training=False</code>),
+            so results are deterministic. If you call the model with <code style="color:#fbbf24;
+            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">training=True</code>,
+            outputs will differ randomly on each run.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+"""
+
 
 # ============================================================
 # GRADIO UI
@@ -573,18 +907,18 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
             gr.HTML(DIVIDER)
             gr.HTML(EX_LABEL)
 
-            # ── EXAMPLE BUTTONS — plain gr.Button wired via .click() ──
-            # Row 1
+            # ── EXAMPLE BUTTONS ──
             with gr.Row(elem_classes="ex-btn-row"):
                 ex1 = gr.Button(EXAMPLES[0], elem_classes="ex-btn")
                 ex2 = gr.Button(EXAMPLES[1], elem_classes="ex-btn")
-            # Row 2
             with gr.Row(elem_classes="ex-btn-row"):
                 ex3 = gr.Button(EXAMPLES[2], elem_classes="ex-btn")
                 ex4 = gr.Button(EXAMPLES[3], elem_classes="ex-btn")
-            # Row 3
             with gr.Row(elem_classes="ex-btn-row"):
                 ex5 = gr.Button(EXAMPLES[4], elem_classes="ex-btn")
+
+        # ── Static info panel (always visible below the main card) ──
+        gr.HTML(INFO_PANEL)
 
         gr.HTML(FOOTER)
 
@@ -593,7 +927,7 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
     text_input.submit(fn=predict_sentiment, inputs=text_input, outputs=output_html)
     clear_btn.click(fn=lambda: ("", EMPTY_RESULT), inputs=None, outputs=[text_input, output_html])
 
-    # ── Example button events — each sets the textbox value ──
+    # ── Example button events ──
     ex1.click(fn=lambda: EXAMPLES[0], inputs=None, outputs=text_input)
     ex2.click(fn=lambda: EXAMPLES[1], inputs=None, outputs=text_input)
     ex3.click(fn=lambda: EXAMPLES[2], inputs=None, outputs=text_input)
