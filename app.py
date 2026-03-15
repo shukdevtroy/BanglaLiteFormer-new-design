@@ -250,9 +250,7 @@ def predict_sentiment(text):
 ">
   <div style="position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,{color}99,transparent);"></div>
-
   {uncertain_banner}
-
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:16px;">
       <div style="
@@ -292,7 +290,6 @@ def predict_sentiment(text):
         style="font-family:monospace;font-size:10px;fill:rgba(148,163,184,0.45);">%</text>
     </svg>
   </div>
-
   <div style="font-family:monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
     color:#c4b5fd;margin-bottom:8px;">CONFIDENCE SCORE</div>
   <div style="background:rgba(255,255,255,0.05);border-radius:100px;height:8px;
@@ -310,7 +307,6 @@ def predict_sentiment(text):
     <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.22);">75</span>
     <span style="font-family:monospace;font-size:9px;color:rgba(148,163,184,0.22);">100</span>
   </div>
-
   <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;
       border:1px solid {card_bdr};background:rgba(0,0,0,0.22);flex:1;min-width:70px;">
@@ -330,7 +326,6 @@ def predict_sentiment(text):
       <span style="font-family:monospace;font-size:12px;font-weight:700;color:#e2e8f0;">Transformer</span>
     </div>
   </div>
-
   {stats_row}
 </div>
 """
@@ -551,6 +546,41 @@ button.secondary:hover, button[variant="secondary"]:hover {
   box-shadow: none !important; padding: 0 !important;
 }
 footer, .svelte-footer, .gr-footer { display: none !important; }
+
+/* ── SCROLL TOGGLE BUTTON ── */
+#bsa-scroll-btn {
+  position: fixed !important;
+  bottom: 32px !important;
+  right: 32px !important;
+  z-index: 9999 !important;
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%) !important;
+  border: 1.5px solid rgba(139,92,246,0.5) !important;
+  box-shadow: 0 8px 28px rgba(124,58,237,0.45), 0 0 0 1px rgba(255,255,255,0.06) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease !important;
+  opacity: 0.92 !important;
+  padding: 0 !important;
+  min-width: unset !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: none !important;
+}
+#bsa-scroll-btn:hover {
+  transform: translateY(-3px) scale(1.08) !important;
+  box-shadow: 0 14px 38px rgba(124,58,237,0.65), 0 0 0 1px rgba(255,255,255,0.1) !important;
+  opacity: 1 !important;
+}
+#bsa-scroll-btn:active {
+  transform: scale(0.95) !important;
+}
 """
 
 
@@ -612,7 +642,64 @@ DIVIDER    = """<div style="height:1px;background:linear-gradient(90deg,transpar
 EX_LABEL   = """<div style="font-family:monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#A78BFA;margin-bottom:10px;">✦ Example inputs — click to try</div>"""
 FOOTER     = """<div style="text-align:center;padding:32px 0 10px;"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#A78BFA;">Powered by Custom Transformer <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Built with TensorFlow &amp; Gradio <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Bengali NLP</p></div>"""
 
-# ── NEW: Static information panel ─────────────────────────────────────────────
+# ── Scroll Toggle Button (injected once, persists on page) ────────────────────
+SCROLL_TOGGLE_BTN = """
+<button id="bsa-scroll-btn" title="Scroll to bottom" aria-label="Scroll to bottom">&#8593;</button>
+<script>
+(function () {
+  // Wait until the button is in the DOM
+  var btn = document.getElementById('bsa-scroll-btn');
+  if (!btn) return;
+
+  // true  → currently showing ↑ (arrow up)  → click scrolls to TOP
+  // false → currently showing ↓ (arrow down) → click scrolls to BOTTOM
+  var atBottom = false;
+
+  function updateBtn() {
+    if (atBottom) {
+      btn.innerHTML = '&#8595;'; // ↓
+      btn.title = 'Scroll to bottom';
+      btn.setAttribute('aria-label', 'Scroll to bottom');
+    } else {
+      btn.innerHTML = '&#8593;'; // ↑
+      btn.title = 'Scroll to top';
+      btn.setAttribute('aria-label', 'Scroll to top');
+    }
+  }
+
+  btn.addEventListener('click', function () {
+    if (!atBottom) {
+      // Arrow UP was showing → scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      atBottom = true;
+    } else {
+      // Arrow DOWN was showing → scroll to bottom
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      atBottom = false;
+    }
+    updateBtn();
+  });
+
+  // Keep button in sync when user scrolls manually
+  window.addEventListener('scroll', function () {
+    var scrolledToTop    = window.scrollY < 60;
+    var scrolledToBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 60);
+
+    if (scrolledToTop && atBottom) {
+      atBottom = false;
+      updateBtn();
+    } else if (scrolledToBottom && !atBottom) {
+      atBottom = true;
+      updateBtn();
+    }
+  }, { passive: true });
+
+  updateBtn();
+})();
+</script>
+"""
+
+# ── Static information panel (always visible below the main card) ─────────────
 INFO_PANEL = """
 <div id="bsa-info" style="
   background:rgba(13,16,35,0.88);
@@ -627,7 +714,6 @@ INFO_PANEL = """
   <!-- top shimmer line -->
   <div style="position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,rgba(124,58,237,0.7) 40%,rgba(34,211,238,0.9) 60%,transparent);"></div>
-
   <!-- Section header -->
   <div style="font-family:monospace;font-size:12px;letter-spacing:3.5px;text-transform:uppercase;
     color:#22d3ee;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
@@ -635,7 +721,6 @@ INFO_PANEL = """
       background:linear-gradient(90deg,#7c3aed,#22d3ee);"></span>
     Model &amp; Performance Reference
   </div>
-
   <!-- ── 1. Computational Cost ── -->
   <div style="margin-bottom:24px;padding:20px;border-radius:14px;
     background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.18);">
@@ -684,7 +769,6 @@ INFO_PANEL = """
       (TensorFlow's XLA warm-up). Subsequent calls are significantly faster.
     </div>
   </div>
-
   <!-- ── 2. Latency ── -->
   <div style="margin-bottom:24px;padding:20px;border-radius:14px;
     background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.16);">
@@ -725,7 +809,6 @@ INFO_PANEL = """
       On Hugging Face Spaces or remote servers, add 50–150 ms round-trip depending on geography.
     </div>
   </div>
-
   <!-- ── 3. Inference Time ── -->
   <div style="margin-bottom:24px;padding:20px;border-radius:14px;
     background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.16);">
@@ -770,7 +853,6 @@ INFO_PANEL = """
       subsequent inferences significantly faster and more consistent.
     </div>
   </div>
-
   <!-- ── 4. When Prediction May Vary ── -->
   <div style="padding:20px;border-radius:14px;
     background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.18);">
@@ -780,7 +862,6 @@ INFO_PANEL = """
         color:#fbbf24;font-weight:700;">4 · When Predictions May Vary or Be Unreliable</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">🔀</span>
@@ -792,7 +873,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">🔤</span>
@@ -805,7 +885,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">🌐</span>
@@ -817,7 +896,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">📏</span>
@@ -829,7 +907,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">😏</span>
@@ -841,7 +918,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">🎭</span>
@@ -853,7 +929,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.2);
         border-left:3px solid rgba(251,191,36,0.5);display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:16px;flex-shrink:0;">🎲</span>
@@ -868,7 +943,6 @@ INFO_PANEL = """
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -921,6 +995,9 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
         gr.HTML(INFO_PANEL)
 
         gr.HTML(FOOTER)
+
+    # ── Floating scroll toggle button (fixed, always on screen) ──
+    gr.HTML(SCROLL_TOGGLE_BTN)
 
     # ── Main events ──
     submit_btn.click(fn=predict_sentiment, inputs=text_input, outputs=output_html)
