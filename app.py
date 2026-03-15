@@ -1,5 +1,5 @@
 import os
-import time  # ← for latency / inference-time measurement
+import time
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
@@ -131,25 +131,20 @@ def predict_sentiment(text):
     if not text or not text.strip():
         return EMPTY_RESULT
 
-    # ── Timing: total wall-clock time (latency) ──────────────
     t_start = time.perf_counter()
 
-    # ── Preprocessing ────────────────────────────────────────
     t_pre0 = time.perf_counter()
     processed = preprocess_text(text)
     t_pre1 = time.perf_counter()
     preprocess_ms = (t_pre1 - t_pre0) * 1000
 
-    # ── Inference (model.predict) ─────────────────────────────
     t_inf0 = time.perf_counter()
     prediction = model.predict(processed, verbose=0)[0]
     t_inf1 = time.perf_counter()
     inference_ms = (t_inf1 - t_inf0) * 1000
 
-    # ── Total latency ─────────────────────────────────────────
     latency_ms = (time.perf_counter() - t_start) * 1000
 
-    # ── Decode prediction ─────────────────────────────────────
     if np.ndim(prediction) == 0 or len(np.atleast_1d(prediction)) == 1:
         score = float(prediction)
         is_positive = score >= 0.5
@@ -163,7 +158,6 @@ def predict_sentiment(text):
     word_count = len(text.split())
     char_count = len(text.strip())
 
-    # ── Uncertainty flag (confidence near 0.5) ───────────────
     is_uncertain = confidence < 0.65
 
     radius = 52
@@ -191,7 +185,6 @@ def predict_sentiment(text):
         bar_grad  = "linear-gradient(90deg,#f8717144,#f87171)"
         intensity = "উচ্চ" if pct >= 80 else ("মাঝারি" if pct >= 60 else "হালকা")
 
-    # ── Uncertainty banner (shown only when confidence < 65%) ─
     uncertain_banner = ""
     if is_uncertain:
         uncertain_banner = f"""
@@ -207,7 +200,6 @@ def predict_sentiment(text):
         </div>
         """
 
-    # ── Performance stats row ──────────────────────────────────
     stats_row = f"""
     <div style="margin-top:18px;">
       <div style="font-family:monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
@@ -546,41 +538,6 @@ button.secondary:hover, button[variant="secondary"]:hover {
   box-shadow: none !important; padding: 0 !important;
 }
 footer, .svelte-footer, .gr-footer { display: none !important; }
-
-/* ── SCROLL TOGGLE BUTTON ── */
-#bsa-scroll-btn {
-  position: fixed !important;
-  bottom: 32px !important;
-  right: 32px !important;
-  z-index: 9999 !important;
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 50% !important;
-  background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%) !important;
-  border: 1.5px solid rgba(139,92,246,0.5) !important;
-  box-shadow: 0 8px 28px rgba(124,58,237,0.45), 0 0 0 1px rgba(255,255,255,0.06) !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease !important;
-  opacity: 0.92 !important;
-  padding: 0 !important;
-  min-width: unset !important;
-  font-size: 22px !important;
-  line-height: 1 !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  text-shadow: none !important;
-}
-#bsa-scroll-btn:hover {
-  transform: translateY(-3px) scale(1.08) !important;
-  box-shadow: 0 14px 38px rgba(124,58,237,0.65), 0 0 0 1px rgba(255,255,255,0.1) !important;
-  opacity: 1 !important;
-}
-#bsa-scroll-btn:active {
-  transform: scale(0.95) !important;
-}
 """
 
 
@@ -642,64 +599,165 @@ DIVIDER    = """<div style="height:1px;background:linear-gradient(90deg,transpar
 EX_LABEL   = """<div style="font-family:monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#A78BFA;margin-bottom:10px;">✦ Example inputs — click to try</div>"""
 FOOTER     = """<div style="text-align:center;padding:32px 0 10px;"><p style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#A78BFA;">Powered by Custom Transformer <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Built with TensorFlow &amp; Gradio <span style="display:inline-block;width:3px;height:3px;background:#7c3aed;border-radius:50%;margin:0 10px;vertical-align:middle;opacity:0.5;"></span> Bengali NLP</p></div>"""
 
-# ── Scroll Toggle Button (injected once, persists on page) ────────────────────
+# ============================================================
+# SCROLL TOGGLE BUTTON
+# Key fixes vs previous version:
+#  1. Button is created via JS and appended directly to document.body
+#     → it never gets wiped by Gradio component re-renders
+#  2. Scrolling targets BOTH window AND .gradio-container because
+#     Gradio can make either one the actual scroll container
+#  3. Arrow direction reflects where you ARE (↓ at top, ↑ at bottom)
+#     and auto-syncs when user scrolls manually
+#  4. Retry loop attaches .gradio-container listener after Gradio
+#     finishes its own render (it may not exist when script runs)
+# ============================================================
+
 SCROLL_TOGGLE_BTN = """
-<button id="bsa-scroll-btn" title="Scroll to bottom" aria-label="Scroll to bottom">&#8593;</button>
 <script>
 (function () {
-  // Wait until the button is in the DOM
-  var btn = document.getElementById('bsa-scroll-btn');
-  if (!btn) return;
+  'use strict';
 
-  // true  → currently showing ↑ (arrow up)  → click scrolls to TOP
-  // false → currently showing ↓ (arrow down) → click scrolls to BOTTOM
-  var atBottom = false;
+  // Prevent duplicate buttons on Gradio hot-reload
+  if (document.getElementById('bsa-scroll-btn')) return;
 
-  function updateBtn() {
-    if (atBottom) {
-      btn.innerHTML = '&#8595;'; // ↓
-      btn.title = 'Scroll to bottom';
-      btn.setAttribute('aria-label', 'Scroll to bottom');
-    } else {
-      btn.innerHTML = '&#8593;'; // ↑
-      btn.title = 'Scroll to top';
-      btn.setAttribute('aria-label', 'Scroll to top');
-    }
+  /* ---------- Create button ---------- */
+  var btn = document.createElement('button');
+  btn.id  = 'bsa-scroll-btn';
+
+  /* All styles are inline so Gradio CSS resets can't clobber them */
+  var S = btn.style;
+  S.position       = 'fixed';
+  S.bottom         = '32px';
+  S.right          = '32px';
+  S.zIndex         = '2147483647';
+  S.width          = '54px';
+  S.height         = '54px';
+  S.borderRadius   = '50%';
+  S.background     = 'linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%)';
+  S.border         = '1.5px solid rgba(139,92,246,0.55)';
+  S.boxShadow      = '0 8px 28px rgba(124,58,237,0.50),0 0 0 1px rgba(255,255,255,0.07)';
+  S.cursor         = 'pointer';
+  S.display        = 'flex';
+  S.alignItems     = 'center';
+  S.justifyContent = 'center';
+  S.fontSize       = '26px';
+  S.lineHeight     = '1';
+  S.color          = '#ffffff';
+  S.outline        = 'none';
+  S.padding        = '0';
+  S.userSelect     = 'none';
+  S.transition     = 'transform 0.18s ease, box-shadow 0.18s ease';
+
+  /* ---------- State ----------
+     atTop === true  → page is near top   → button shows ↓ (next action: go to bottom)
+     atTop === false → page is near bottom → button shows ↑ (next action: go to top)   */
+  var atTop = true;
+
+  function setArrow(top) {
+    atTop         = top;
+    btn.innerHTML = top ? '&#8681;' : '&#8679;';  /* ⇩ big down / ⇧ big up */
+    btn.title     = top ? 'Scroll to bottom'       : 'Scroll to top';
   }
 
+  /* ---------- Collect every scrollable container ---------- */
+  function scrollables() {
+    var list = [window];
+    var gc   = document.querySelector('.gradio-container');
+    var main = document.querySelector('main');
+    if (gc)   list.push(gc);
+    if (main) list.push(main);
+    return list;
+  }
+
+  /* ---------- Read current scroll position ---------- */
+  function currentScrollTop() {
+    var v = window.scrollY || window.pageYOffset || 0;
+    var gc = document.querySelector('.gradio-container');
+    if (gc && gc.scrollTop > v) v = gc.scrollTop;
+    return v;
+  }
+
+  function maxScrollHeight() {
+    var gc = document.querySelector('.gradio-container');
+    return Math.max(
+      document.body.scrollHeight        || 0,
+      document.documentElement.scrollHeight || 0,
+      gc ? gc.scrollHeight : 0
+    );
+  }
+
+  /* ---------- Perform scroll ---------- */
+  function doScroll(toTop) {
+    scrollables().forEach(function (el) {
+      if (el === window) {
+        window.scrollTo({ top: toTop ? 0 : maxScrollHeight(), behavior: 'smooth' });
+      } else {
+        el.scrollTo({ top: toTop ? 0 : el.scrollHeight, behavior: 'smooth' });
+      }
+    });
+  }
+
+  /* ---------- Click ---------- */
   btn.addEventListener('click', function () {
-    if (!atBottom) {
-      // Arrow UP was showing → scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      atBottom = true;
+    if (atTop) {
+      doScroll(false);   /* go to bottom */
+      setArrow(false);
     } else {
-      // Arrow DOWN was showing → scroll to bottom
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-      atBottom = false;
+      doScroll(true);    /* go to top */
+      setArrow(true);
     }
-    updateBtn();
   });
 
-  // Keep button in sync when user scrolls manually
-  window.addEventListener('scroll', function () {
-    var scrolledToTop    = window.scrollY < 60;
-    var scrolledToBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 60);
+  /* ---------- Sync arrow with manual scrolling ---------- */
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      var st  = currentScrollTop();
+      var sh  = maxScrollHeight();
+      var ih  = window.innerHeight;
+      if (st < 80 && !atTop)          setArrow(true);   /* reached top */
+      if (st + ih >= sh - 80 && atTop) setArrow(false); /* reached bottom */
+      ticking = false;
+    });
+  }
 
-    if (scrolledToTop && atBottom) {
-      atBottom = false;
-      updateBtn();
-    } else if (scrolledToBottom && !atBottom) {
-      atBottom = true;
-      updateBtn();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  /* ---------- Hover / active effects ---------- */
+  btn.addEventListener('mouseenter', function () {
+    S.transform = 'translateY(-3px) scale(1.10)';
+    S.boxShadow = '0 14px 38px rgba(124,58,237,0.70),0 0 0 1px rgba(255,255,255,0.12)';
+  });
+  btn.addEventListener('mouseleave', function () {
+    S.transform = '';
+    S.boxShadow = '0 8px 28px rgba(124,58,237,0.50),0 0 0 1px rgba(255,255,255,0.07)';
+  });
+  btn.addEventListener('mousedown', function () { S.transform = 'scale(0.93)'; });
+  btn.addEventListener('mouseup',   function () { S.transform = ''; });
+
+  /* ---------- Mount on body (survives Gradio re-renders) ---------- */
+  document.body.appendChild(btn);
+  setArrow(true);  /* page starts at top → show ↓ */
+
+  /* ---------- Attach .gradio-container scroll listener after
+                Gradio finishes rendering (may not exist yet) ---------- */
+  var tries = 0;
+  var timer = setInterval(function () {
+    var gc = document.querySelector('.gradio-container');
+    if (gc && !gc.__bsaBound) {
+      gc.addEventListener('scroll', onScroll, { passive: true });
+      gc.__bsaBound = true;
     }
-  }, { passive: true });
+    if (++tries > 30) clearInterval(timer);
+  }, 200);
 
-  updateBtn();
 })();
 </script>
 """
 
-# ── Static information panel (always visible below the main card) ─────────────
+# ── Static information panel ───────────────────────────────────────────────────
 INFO_PANEL = """
 <div id="bsa-info" style="
   background:rgba(13,16,35,0.88);
@@ -711,10 +769,8 @@ INFO_PANEL = """
   backdrop-filter:blur(20px);
   box-shadow:0 20px 60px rgba(0,0,0,0.4);
 ">
-  <!-- top shimmer line -->
   <div style="position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,rgba(124,58,237,0.7) 40%,rgba(34,211,238,0.9) 60%,transparent);"></div>
-  <!-- Section header -->
   <div style="font-family:monospace;font-size:12px;letter-spacing:3.5px;text-transform:uppercase;
     color:#22d3ee;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
     <span style="width:22px;height:1.5px;border-radius:2px;display:inline-block;
@@ -764,7 +820,7 @@ INFO_PANEL = """
     <div style="margin-top:12px;padding:10px 14px;border-radius:8px;
       background:rgba(124,58,237,0.08);border-left:3px solid rgba(124,58,237,0.5);
       font-family:monospace;font-size:11px;color:rgba(196,181,253,0.75);line-height:1.7;">
-      ℹ️ &nbsp;Self-attention complexity scales as <b style="color: white !important;">O(n²·d)</b> where n = sequence length and d = embedding dimension.
+      ℹ️ &nbsp;Self-attention complexity scales as <b style="color:white !important;">O(n²·d)</b> where n = sequence length and d = embedding dimension.
       At n=80 this is negligible — the dominant cost is the first inference call due to TF graph compilation
       (TensorFlow's XLA warm-up). Subsequent calls are significantly faster.
     </div>
@@ -821,9 +877,7 @@ INFO_PANEL = """
       color:rgba(226,232,240,0.82);line-height:1.85;margin-bottom:14px;">
       <b style="color:#00e5a0;">Inference time</b> measures only the <code style="color:#00e5a0;
       background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;">model.predict()</code> call —
-      the neural network forward pass itself. This is the pure compute cost and excludes
-      tokenization, Gradio overhead, and network round-trips. Each run shows the <em>live</em>
-      measured value above in the result card.
+      the neural network forward pass itself, excluding tokenization, Gradio overhead, and network round-trips.
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
       <div style="padding:12px 16px;border-radius:10px;background:rgba(0,0,0,0.25);
@@ -849,8 +903,7 @@ INFO_PANEL = """
       background:rgba(0,229,160,0.06);border-left:3px solid rgba(0,229,160,0.4);
       font-family:monospace;font-size:11px;color:rgba(110,231,183,0.75);line-height:1.7;">
       ℹ️ &nbsp;First-call inference is slower because TensorFlow traces and compiles the computation graph
-      (XLA/JIT). After the first call the compiled graph is cached in memory, making all
-      subsequent inferences significantly faster and more consistent.
+      (XLA/JIT). After the first call the compiled graph is cached, making subsequent inferences faster.
     </div>
   </div>
   <!-- ── 4. When Prediction May Vary ── -->
@@ -869,7 +922,7 @@ INFO_PANEL = """
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">MIXED SENTIMENT</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
             Text containing both positive and negative signals (e.g., "পণ্যটি সুন্দর কিন্তু দাম বেশি") confuses the
-            binary classifier. Confidence will hover near 50 % and may flip with small edits.
+            binary classifier. Confidence will hover near 50% and may flip with small edits.
           </div>
         </div>
       </div>
@@ -879,9 +932,8 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">OOV / RARE VOCABULARY</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            Words not seen during training are mapped to an unknown token <code style="color:#fbbf24;
-            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">&lt;UNK&gt;</code>.
-            Heavy use of slang, dialect, transliteration, or technical jargon will degrade accuracy.
+            Words not seen during training are mapped to <code style="color:#fbbf24;background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">&lt;UNK&gt;</code>.
+            Heavy use of slang, dialect, transliteration, or jargon will degrade accuracy.
           </div>
         </div>
       </div>
@@ -891,8 +943,7 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">CODE-SWITCHING (BANGLISH)</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            Mixing Bangla script with English words or Roman-script Bangla causes many tokens to be
-            OOV, making predictions unreliable. Use pure Unicode Bangla for best results.
+            Mixing Bangla script with English words or Roman-script Bangla causes many tokens to be OOV. Use pure Unicode Bangla for best results.
           </div>
         </div>
       </div>
@@ -902,8 +953,7 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">VERY SHORT OR VERY LONG TEXT</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            Single-word inputs lack context. Texts exceeding 80 tokens are silently truncated —
-            sentiment expressed only in the trailing portion will be ignored entirely.
+            Single-word inputs lack context. Texts exceeding 80 tokens are silently truncated — sentiment in the trailing portion will be ignored.
           </div>
         </div>
       </div>
@@ -913,8 +963,7 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">SARCASM &amp; IRONY</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            The model has no pragmatic understanding. Ironic phrases like "হ্যাঁ, অসাধারণ সার্ভিস!" (sarcastic)
-            are likely classified as Positive because the surface tokens are positive.
+            The model has no pragmatic understanding. Ironic phrases like "হ্যাঁ, অসাধারণ সার্ভিস!" (sarcastic) are likely classified as Positive.
           </div>
         </div>
       </div>
@@ -924,8 +973,7 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">DOMAIN SHIFT</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            If the training data consisted mainly of product reviews, the model may perform poorly
-            on political commentary, news text, or social media posts with different linguistic patterns.
+            If trained mainly on product reviews, the model may perform poorly on political commentary, news text, or social media posts.
           </div>
         </div>
       </div>
@@ -935,11 +983,7 @@ INFO_PANEL = """
         <div>
           <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#fbbf24;margin-bottom:4px;">DROPOUT AT INFERENCE (if training=True)</div>
           <div style="font-family:'Hind Siliguri',sans-serif;font-size:13px;color:rgba(226,232,240,0.75);line-height:1.7;">
-            Dropout layers are disabled during inference (<code style="color:#fbbf24;
-            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">training=False</code>),
-            so results are deterministic. If you call the model with <code style="color:#fbbf24;
-            background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">training=True</code>,
-            outputs will differ randomly on each run.
+            Dropout is disabled at inference (<code style="color:#fbbf24;background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">training=False</code>), so results are deterministic by default.
           </div>
         </div>
       </div>
@@ -981,7 +1025,6 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
             gr.HTML(DIVIDER)
             gr.HTML(EX_LABEL)
 
-            # ── EXAMPLE BUTTONS ──
             with gr.Row(elem_classes="ex-btn-row"):
                 ex1 = gr.Button(EXAMPLES[0], elem_classes="ex-btn")
                 ex2 = gr.Button(EXAMPLES[1], elem_classes="ex-btn")
@@ -991,20 +1034,17 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
             with gr.Row(elem_classes="ex-btn-row"):
                 ex5 = gr.Button(EXAMPLES[4], elem_classes="ex-btn")
 
-        # ── Static info panel (always visible below the main card) ──
         gr.HTML(INFO_PANEL)
-
         gr.HTML(FOOTER)
 
-    # ── Floating scroll toggle button (fixed, always on screen) ──
+    # Inject the floating scroll button — pure JS, mounts on document.body
     gr.HTML(SCROLL_TOGGLE_BTN)
 
-    # ── Main events ──
+    # ── Events ──
     submit_btn.click(fn=predict_sentiment, inputs=text_input, outputs=output_html)
     text_input.submit(fn=predict_sentiment, inputs=text_input, outputs=output_html)
     clear_btn.click(fn=lambda: ("", EMPTY_RESULT), inputs=None, outputs=[text_input, output_html])
 
-    # ── Example button events ──
     ex1.click(fn=lambda: EXAMPLES[0], inputs=None, outputs=text_input)
     ex2.click(fn=lambda: EXAMPLES[1], inputs=None, outputs=text_input)
     ex3.click(fn=lambda: EXAMPLES[2], inputs=None, outputs=text_input)
