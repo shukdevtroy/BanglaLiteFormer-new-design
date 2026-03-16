@@ -910,11 +910,31 @@ with gr.Blocks(css=css, title="Bangla Sentiment Analyzer") as demo:
     clear_btn.click(fn=lambda: ("", EMPTY_RESULT), inputs=None, outputs=[text_input, output_html])
 
     # ── Example button events ──
-    ex1.click(fn=lambda: EXAMPLES[0], inputs=None, outputs=text_input)
-    ex2.click(fn=lambda: EXAMPLES[1], inputs=None, outputs=text_input)
-    ex3.click(fn=lambda: EXAMPLES[2], inputs=None, outputs=text_input)
-    ex4.click(fn=lambda: EXAMPLES[3], inputs=None, outputs=text_input)
-    ex5.click(fn=lambda: EXAMPLES[4], inputs=None, outputs=text_input)
+    ex1.click(
+        fn=lambda: (EXAMPLES[0], predict_sentiment(EXAMPLES[0])),
+        inputs=None,
+        outputs=[text_input, output_html]
+    )
+    ex2.click(
+        fn=lambda: (EXAMPLES[1], predict_sentiment(EXAMPLES[1])),
+        inputs=None,
+        outputs=[text_input, output_html]
+    )
+    ex3.click(
+        fn=lambda: (EXAMPLES[2], predict_sentiment(EXAMPLES[2])),
+        inputs=None,
+        outputs=[text_input, output_html]
+    )
+    ex4.click(
+        fn=lambda: (EXAMPLES[3], predict_sentiment(EXAMPLES[3])),
+        inputs=None,
+        outputs=[text_input, output_html]
+    )
+    ex5.click(
+        fn=lambda: (EXAMPLES[4], predict_sentiment(EXAMPLES[4])),
+        inputs=None,
+        outputs=[text_input, output_html]
+    )
 
 
 if __name__ == "__main__":
