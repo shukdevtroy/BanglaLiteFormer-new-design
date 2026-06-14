@@ -1,4 +1,4 @@
-tensorflow==2.20.0
+tensorflow
 gradio
 numpy
 scikit-learn
